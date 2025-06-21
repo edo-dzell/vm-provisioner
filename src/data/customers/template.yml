@@ -1,5 +1,8 @@
 prefix:       ???         # z. B. OBS
 vlanId:       ???         # z. B. 120
+vlanEnable:    true
+bootFromIsoFirst: true
+
 roles:
   DC:
     number:   001

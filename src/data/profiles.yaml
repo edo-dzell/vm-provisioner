@@ -1,10 +1,43 @@
 DomainController:
-  cpu: 4
-  memoryMB: 8192
+  cpu:            2
+  memoryMB:       1024
+  dynamicMemory:  true
+  memoryMinMB:    1024
+  memoryMaxMB:    2048
+  nested:         false
+  secureBoot:     true
+  tpm:            true
+  integrationServices:
+    Time Synchronization:      false
+    Heartbeat:                 true
+    Key-Value Pair Exchange:   true
+    Shutdown:                  true
+    VSS:                       true
+    Guest Service Interface:   true
+  autoStartAction:  Start
+  autoStartDelay:   30
+  autoStopAction:   Shutdown
   disks:
-    - sizeGB: 100     # System
+    - sizeGB: 100
+
 RdsSessionHost:
-  cpu: 8
-  memoryMB: 16384
+  cpu:            2
+  memoryMB:       1024
+  dynamicMemory:  true
+  memoryMinMB:    1024
+  memoryMaxMB:    2048
+  nested:         false
+  secureBoot:     true
+  tpm:            true
+  integrationServices:
+    Time Synchronization:      false
+    Heartbeat:                 true
+    Key-Value Pair Exchange:   true
+    Shutdown:                  true
+    VSS:                       true
+    Guest Service Interface:   true
+  autoStartAction:  Start
+  autoStartDelay:   30
+  autoStopAction:   Shutdown
   disks:
     - sizeGB: 100
