@@ -1,0 +1,7 @@
+# Hyper-V Artefakte
+*.iso
+*.vhd*
+*.vfd
+output/
+*.log
+*.zip

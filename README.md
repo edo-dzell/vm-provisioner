@@ -1,18 +1,8 @@
-@"
 # VM Provisioner
 
-PowerShell 7 + DSC v3 basiertes Framework …
-"@ | Out-File README.md -Encoding utf8 -Force
+PowerShell 7 + DSC v3 basierter Workflow zum automatischen Erstellen,
+Installieren und Grund­konfigurieren von Hyper-V-VMs.
 
-
-Kurzanleitung
--------------
-
-1. Kopiere _data/customers/template.yml_ → _customer.yml_ (oder Kundenpräfix).
-2. Fülle VLAN, IP, Sprache usw. aus.
-3. Starte Provisionierung:
-
-   ```powershell
-   pwsh scripts\Apply-Lab.ps1 `
-        -CustomerYaml data\customers\OBS.yml `
-        -Role DC
+## Quick Start
+1. Kopiere `data/customers/template.yml` ➜ `OBS.yml`, passe Werte an
+2. `pwsh scripts/Apply-Lab.ps1 -CustomerYaml data/customers/OBS.yml -Role DC`

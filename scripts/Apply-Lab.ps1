@@ -5,7 +5,7 @@ param(
 )
 
 if ($CustomerYaml -like '*template.yml') {
-    throw "Bitte kopiere 'template.yml' erst in eine kunden­eigene Datei (z. B. customer.yml) und passe die Werte an."
+    throw "Bitte kopiere 'template.yml' zuerst in eine kunden­eigene Datei und passe die Werte an."
 }
 
 Import-Module powershell-yaml          -ErrorAction Stop
