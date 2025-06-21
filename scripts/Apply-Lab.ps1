@@ -51,23 +51,42 @@ if (-not (Test-Path $installIso)) { throw "Installations-ISO '$installIso' nicht
 New-Item $vmRoot -ItemType Directory -Force | Out-Null
 
 #──────────────── Unattended-ISO bauen ─────────────────────────
-$template = Get-Content "$PSScriptRoot\..\src\templates\Unattend.xml" -Raw
-@{ Lang=$roleInfo.lang; Prefix=$customer.prefix; Hostname=$hostname; AdminPassword='Passw0rd!' } |
-    ForEach-Object {
-        $template = $template -replace "\$\{$_.Key\}", $_.Value   # ← **Backslash entfernt**
-    }
+$templatePath = "$PSScriptRoot\..\src\templates\Unattend.xml"
+$template     = Get-Content $templatePath -Raw
+
+# Platzhalter → echte Werte
+$placeholders = @{
+    Lang          = $roleInfo.lang
+    Prefix        = $customer.prefix
+    Hostname      = $hostname
+    AdminPassword = 'Passw0rd!'     # TODO: geheim verwalten
+}
+
+foreach ($kv in $placeholders.GetEnumerator()) {
+    # \$\{Lang\}  usw. – 100 % exakter Treffer, kein RegEx-Sonderzeichen
+    $pattern  = [regex]::Escape('$' + '{' + $kv.Key + '}')
+    $template = $template -replace $pattern, $kv.Value
+}
+
+# ----------------------------------------------------------------
+# bis hierhin ist $template nun komplett ohne ${...}-Platzhalter!
+# ----------------------------------------------------------------
 
 function New-MinIso ([string]$Xml,[string]$Iso) {
     $tmp = Join-Path $env:TEMP "unatt_$(New-Guid)"
     New-Item $tmp -ItemType Directory | Out-Null
     $Xml | Set-Content "$tmp\Autounattend.xml" -Encoding UTF8
+
     $oscd = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits" -Filter oscdimg.exe -Recurse |
             Select-Object -First 1 -ExpandProperty FullName
     if (-not $oscd) { throw "oscdimg.exe (ADK) fehlt." }
+
     & $oscd -o -u2 -udfver102 $tmp $Iso | Out-Null
     Remove-Item $tmp -Recurse -Force
 }
+
 New-MinIso -Xml $template -Iso $unattIso
+
 
 #──────────────── VM anlegen ───────────────────────────────────
 if ($PSCmdlet.ShouldProcess($hostname,'Create Hyper-V VM')) {
