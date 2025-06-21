@@ -106,18 +106,31 @@ if ($PSCmdlet.ShouldProcess($hostname,'Create Hyper-V VM')) {
     }
 
     # ---------- DVD-Drives robust einbinden ----------
-    function Add-OrSet-DvdDrive { param($VM,$Location,$Iso)
-        $dvd = Get-VMDvdDrive -VMName $VM -ControllerLocation $Location -ErrorAction SilentlyContinue
-        if ($dvd) { Set-VMDvdDrive -VMName $VM -ControllerLocation $Location -Path $Iso }
-        else      { Add-VMDvdDrive -VMName $VM -ControllerLocation $Location -Path $Iso }
+    function Set-OrAddDvd {
+        param(
+            [string] $VM,
+            [int]    $CtlNum,
+            [int]    $Loc,
+            [string] $Iso
+        )
+        $dvd = Get-VMDvdDrive -VMName $VM -ControllerNumber $CtlNum -ControllerLocation $Loc `
+                            -ErrorAction SilentlyContinue
+        if ($dvd) {
+            Set-VMDvdDrive -VMName $VM -ControllerNumber $CtlNum -ControllerLocation $Loc -Path $Iso
+        } else {
+            Add-VMDvdDrive -VMName $VM -ControllerNumber $CtlNum -ControllerLocation $Loc -Path $Iso
+        }
     }
 
-    Add-OrSet-DvdDrive $hostname 0 $installIso   # Install-ISO
-    Add-OrSet-DvdDrive $hostname 1 $unattIso     # Unattend-ISO
+    # Install-ISO auf vorhandenes Laufwerk (Ctl 0 / Loc 0)
+    Set-OrAddDvd -VM $hostname -CtlNum 0 -Loc 0 -Iso $installIso
+
+    # Unattend-ISO als zweites Laufwerk (Ctl 1 / Loc 0)
+    Set-OrAddDvd -VM $hostname -CtlNum 1 -Loc 0 -Iso $unattIso
 
     # Booten immer von DVD 0
-    $dvd0 = Get-VMDvdDrive -VMName $hostname -ControllerLocation 0
-    Set-VMFirmware -VMName $hostname -FirstBootDevice $dvd0
+    $dvdBoot = Get-VMDvdDrive -VMName $hostname -ControllerNumber 0 -ControllerLocation 0
+    Set-VMFirmware -VMName $hostname -FirstBootDevice $dvdBoot
 
     # VLAN (optional)
     if ($customer.vlanEnable) {
