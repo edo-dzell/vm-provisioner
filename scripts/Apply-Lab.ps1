@@ -1,70 +1,94 @@
+<#
+.SYNOPSIS
+  Erstellt und konfiguriert eine VM auf Hyper-V mithilfe von DSC v3.
+  Generation 2, Secure Boot, Unattended-Setup via Mini-ISO.
+
+.EXAMPLE
+  pwsh scripts\Apply-Lab.ps1 -CustomerYaml data\customers\OBS.yml -Role DC
+#>
+
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][string]$CustomerYaml,
-    [Parameter(Mandatory)][ValidateSet('DC','RDS')][string]$Role
+    [Parameter(Mandatory)][string] $CustomerYaml,
+    [Parameter(Mandatory)][ValidateSet('DC','RDS')][string] $Role
 )
 
+# --- Schutz gegen versehentliches Template -------------------------------
 if ($CustomerYaml -like '*template.yml') {
     throw "Bitte kopiere 'template.yml' zuerst in eine kunden­eigene Datei und passe die Werte an."
 }
 
-Import-Module powershell-yaml          -ErrorAction Stop
+# --- Basismodule ---------------------------------------------------------
+Import-Module powershell-yaml  -ErrorAction Stop
 Import-Module Microsoft.PowerShell.Security
 
-# --- Daten einlesen ---------------------------------------------------------
+# --- Daten einlesen ------------------------------------------------------
 $customer   = ConvertFrom-Yaml (Get-Content $CustomerYaml -Raw)
 $profiles   = ConvertFrom-Yaml (Get-Content "$PSScriptRoot\..\src\data\profiles.yaml" -Raw)
 $isoIndex   = Get-Content "$PSScriptRoot\..\src\data\iso-index.json" | ConvertFrom-Json
 
 $roleInfo   = $customer.roles.$Role
-$profile    = $profiles["$($Role -eq 'DC' ? 'DomainController' : 'RdsSessionHost')"]
+$profile    = $profiles[$Role -eq 'DC' ? 'DomainController' : 'RdsSessionHost']
 
-# Laufende Nummer zusammensetzen
-$hostname   = "{0}{1:D3}{2}" -f $customer.prefix, $roleInfo.number, $Role
+# --- Hostname & Pfade ----------------------------------------------------
+$hostname      = '{0}{1:D3}{2}' -f $customer.prefix, $roleInfo.number, $Role
+$vmRoot        = "C:\VMs\$hostname"
+$vhdPath       = "$vmRoot\$hostname.vhdx"
+$unattendIso   = "$vmRoot\Unattend.iso"
+$installIso    = $isoIndex.WindowsServer2025.$($roleInfo.lang)
 
-# --- Pfade & Größen ---------------------------------------------------------
-$isoPath    = $isoIndex.WindowsServer2025.$($roleInfo.lang)
-$vhdPath    = "C:\VMs\$hostname\$hostname.vhdx"
-$floppyPath = "C:\VMs\$hostname\Autounattend.vfd"
+# --- Prüfen, ob OS-Install-ISO existiert ---------------------------------
+if (-not (Test-Path $installIso)) {
+    throw "Installations-ISO '$installIso' nicht gefunden."
+}
 
-# --- Unattend.xml rendern ---------------------------------------------------
+# --- Unattend.xml rendern ------------------------------------------------
 $template = Get-Content "$PSScriptRoot\..\src\templates\Unattend.xml" -Raw
-$map = @{
+$replace  = @{
     Lang          = $roleInfo.lang
     Prefix        = $customer.prefix
     Hostname      = $hostname
-    AdminPassword = 'Passw0rd!'           # TODO: eigenen Generator / Geheimnis
+    AdminPassword = 'Passw0rd!'    # TODO: geheim verwalten
 }
-foreach($key in $map.Keys){
-    $template = $template -replace "\$\{$key\}", [regex]::Escape($map[$key])
+foreach ($k in $replace.Keys) { $template = $template -replace "\$\{$k\}", $replace[$k] }
+
+# --- Mini-ISO erstellen --------------------------------------------------
+function New-MinIso {
+    param(
+        [Parameter(Mandatory)][string] $XmlContent,
+        [Parameter(Mandatory)][string] $IsoPath
+    )
+    $temp = Join-Path $env:TEMP "attend_$([guid]::NewGuid())"
+    New-Item $temp -ItemType Directory | Out-Null
+    $XmlContent | Set-Content "$temp\Autounattend.xml" -Encoding UTF8
+
+    $oscd = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Windows Kits" -Filter oscdimg.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+    if (-not $oscd) { throw "oscdimg.exe nicht gefunden – installiere das Windows ADK!" }
+
+    & $oscd -o -u2 -udfver102 $temp $IsoPath | Out-Null
+    Remove-Item $temp -Recurse -Force
 }
 
-# Floppy erstellen (requires Hyper-V PowerShell cmdlets)
-$null = New-Item -ItemType Directory -Path (Split-Path $floppyPath) -Force
-New-VFD -Path $floppyPath -Size 1440KB
-Copy-Item -Path ([IO.Path]::GetTempFileName()) -Destination $floppyPath -Force
-Set-VFD -Path $floppyPath -Content $template
+New-Item $vmRoot -ItemType Directory -Force | Out-Null
+New-MinIso -XmlContent $template -IsoPath $unattendIso
 
-# --- YAML für DSC rendern ---------------------------------------------------
+# --- DSC-YAML rendern ----------------------------------------------------
 $dscYaml = Get-Content "$PSScriptRoot\..\src\DSC\configs\00-NewVM.yaml" -Raw
-$map2 = @{
-    Hostname     = $hostname
-    MemoryBytes  = ($profile.memoryMB * 1MB)
-    CPU          = $profile.cpu
-    VhdPath      = $vhdPath
-    DiskBytes    = ($profile.disks[0].sizeGB * 1GB)
-    IsoPath      = $isoPath
-    FloppyPath   = $floppyPath
+$map = @{
+    Hostname      = $hostname
+    MemoryBytes   = ($profile.memoryMB * 1MB)
+    CPU           = $profile.cpu
+    VhdPath       = $vhdPath
+    DiskBytes     = ($profile.disks[0].sizeGB * 1GB)
+    IsoPath       = $installIso
+    UnattendIso   = $unattendIso
 }
-foreach($key in $map2.Keys){
-    $dscYaml = $dscYaml -replace "\$\{$key\}", $map2[$key]
-}
+foreach ($k in $map.Keys) { $dscYaml = $dscYaml -replace "\$\{$k\}", $map[$k] }
 $dscFile = Join-Path $env:TEMP "$hostname-dsc.yaml"
 $dscYaml | Set-Content $dscFile
 
-# --- DSC anwenden -----------------------------------------------------------
+# --- DSC anwenden & VM starten -------------------------------------------
 dsc config set --file $dscFile
-
-# --- Starten & Aufräumen ----------------------------------------------------
 Start-VM -Name $hostname
-Write-Verbose "VM $hostname wurde gestartet. Unattend via Floppy eingehängt."
+
+Write-Host "VM '$hostname' erstellt und gestartet."

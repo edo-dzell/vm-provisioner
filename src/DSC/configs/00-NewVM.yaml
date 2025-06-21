@@ -3,7 +3,7 @@ metadata:
   name: New-VM
 resources:
   - name: Ensure switch exists
-    type: PSDesiredStateConfiguration/WindowsFeature  # Workaround, xVMSwitch im Adapter-Bereich
+    type: PSDesiredStateConfiguration/WindowsFeature     # Workaround, xVMSwitch im Adapter-Bereich
     properties:
       Name: Hyper-V
       Ensure: Present
@@ -11,13 +11,13 @@ resources:
   - name: CreateVM
     type: xHyper-V/VM
     properties:
-      Name:          '${Hostname}'
-      Generation:    2
-      SwitchName:    'S2DSwitch'
-      MemoryStartupBytes: '${MemoryBytes}'
-      ProcessorCount:     ${CPU}
-      SecureBoot:    On
-      TPMEnabled:    true
+      Name:                '${Hostname}'
+      Generation:          2
+      SwitchName:          'S2DSwitch'
+      MemoryStartupBytes:  '${MemoryBytes}'
+      ProcessorCount:      ${CPU}
+      SecureBoot:          On
+      TPMEnabled:          true
 
   - name: SystemDisk
     type: xHyper-V/HardDiskDrive
@@ -26,14 +26,16 @@ resources:
       Path:       '${VhdPath}'
       SizeBytes:  ${DiskBytes}
 
-  - name: DvdIso
+  - name: InstallIso
     type: xHyper-V/DVDDrive
     properties:
       VMName:     '${Hostname}'
       Path:       '${IsoPath}'
+      ControllerLocation: 0
 
-  - name: FloppyUnattend
-    type: xHyper-V/FloppyDrive
+  - name: UnattendIso
+    type: xHyper-V/DVDDrive
     properties:
       VMName:     '${Hostname}'
-      Path:       '${FloppyPath}'
+      Path:       '${UnattendIso}'
+      ControllerLocation: 1            # zweites DVD-Laufwerk
