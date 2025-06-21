@@ -7,6 +7,7 @@ DomainController:
   nested:         false
   secureBoot:     true
   tpm:            true
+  switch: S2DSwitch 
   integrationServices:
     Time Synchronization:      false
     Heartbeat:                 true
@@ -29,6 +30,7 @@ RdsSessionHost:
   nested:         false
   secureBoot:     true
   tpm:            true
+  switch: S2DSwitch 
   integrationServices:
     Time Synchronization:      false
     Heartbeat:                 true

@@ -71,10 +71,19 @@ New-MinIso -Xml $template -IsoPath $unattIso
 #────────────────────────────────── VM erstellen (Cmdlets) ────────────────────────────────────
 if ($PSCmdlet.ShouldProcess($hostname, 'Create Hyper-V VM')) {
 
-    # Basis-VM
-    New-VM -Name $hostname -Generation 2 -MemoryStartupBytes ($profile.memoryMB*1MB) `
-           -Path $vmRoot -NewVHDPath $vhdPath -NewVHDSizeBytes ($profile.disks[0].sizeGB*1GB) `
-           -SwitchName 'S2DSwitch' | Out-Null
+    # Basis-VM anlegen
+    $vmSwitch = if     ($customer.switch) { $customer.switch }
+                elseif ($profile.switch)  { $profile.switch  }
+                else                     { 'S2DSwitch' }   # Fallback
+
+    New-VM -Name $hostname `
+        -Generation         2 `
+        -MemoryStartupBytes ($profile.memoryMB * 1MB) `
+        -Path               $vmRoot `
+        -NewVHDPath         $vhdPath `
+        -NewVHDSizeBytes    ($profile.disks[0].sizeGB * 1GB) `
+        -SwitchName         $vmSwitch |
+        Out-Null
 
     # CPU + Nested
     Set-VMProcessor -VMName $hostname -Count $profile.cpu `
