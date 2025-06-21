@@ -1,4 +1,5 @@
 DomainController:
+  basePath:       D:\VMs
   cpu:            2
   memoryMB:       1024
   dynamicMemory:  true
@@ -22,6 +23,7 @@ DomainController:
     - sizeGB: 100
 
 RdsSessionHost:
+  basePath:       D:\VMs
   cpu:            2
   memoryMB:       1024
   dynamicMemory:  true

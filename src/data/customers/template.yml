@@ -1,7 +1,8 @@
-prefix:       ???         # z. B. OBS
-vlanId:       ???         # z. B. 120
-vlanEnable:    true
-switch:     External
+prefix:           ???         # z. B. OBS
+basePath:         E:\CustomerVMs # Auf dem Hyper-V Failover Cluster ist C:\ClusterVolume\... zu verwenden
+vlanId:           ???         # z. B. 120
+vlanEnable:       true
+switch:           External
 bootFromIsoFirst: true
 
 roles:
