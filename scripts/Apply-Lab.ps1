@@ -1,12 +1,5 @@
 <#
-.SYNOPSIS
-  Erstellt und konfiguriert eine Hyper-V-VM (Generation 2) rein mit
-  PowerShell-Cmdlets.  CPU, RAM, VLAN, Pfade usw. stammen aus
-  profiles.yaml und <Customer>.yml.  Ein Mini-ISO mit Autounattend.xml
-  wird on-the-fly generiert und als zweites DVD-Laufwerk eingebunden.
-
-.EXAMPLE
-  pwsh scripts\Apply-Lab.ps1 -CustomerYaml OBS.yml -Role DC -Verbose
+  Hyper-V-VM-Provisioning – finale bereinigte Fassung
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -15,7 +8,7 @@ param(
     [Parameter(Mandatory)][ValidateSet('DC','RDS')] [string] $Role
 )
 
-#──────────────────────────── Pfad zur Kunden-YAML auflösen ────────────────────────────
+#──────────────── Pfad zur Kunden-YAML auflösen ────────────────
 if (-not (Test-Path $CustomerYaml)) {
     $probe = Join-Path $PSScriptRoot "..\src\data\customers\$CustomerYaml"
     if (Test-Path $probe) { $CustomerYaml = (Resolve-Path $probe).Path }
@@ -25,11 +18,11 @@ if ($CustomerYaml -like '*template.yml') {
     throw "Bitte zuerst template.yml kopieren & anpassen!"
 }
 
-#──────────────────────────── Module & Basisdaten laden ───────────────────────────────
+#──────────────── Module & Daten laden ─────────────────────────
 Import-Module powershell-yaml -ErrorAction Stop
 Import-Module Hyper-V        -ErrorAction Stop
 
-$customer   = (Get-Content $CustomerYaml                       -Raw) | ConvertFrom-Yaml
+$customer   = (Get-Content $CustomerYaml -Raw) | ConvertFrom-Yaml
 $profiles   = (Get-Content "$PSScriptRoot\..\src\data\profiles.yaml" -Raw) | ConvertFrom-Yaml
 $isoIndex   =  Get-Content "$PSScriptRoot\..\src\data\iso-index.json"      | ConvertFrom-Json
 
@@ -37,43 +30,48 @@ $profileKey = ($Role -eq 'DC') ? 'DomainController' : 'RdsSessionHost'
 $profile    = $profiles.$profileKey
 $roleInfo   = $customer.roles.$Role
 
-#──────────────────────────── Hostname + Stammpfad ─────────────────────────────────────
+#──────────────── Hostname & Basispfad ─────────────────────────
 $hostname = '{0}{1:D3}{2}' -f $customer.prefix, $roleInfo.number, $Role
-
 $basePath = if     ($customer.basePath) { $customer.basePath }
             elseif ($profile.basePath)  { $profile.basePath  }
             else                        { (Get-VMHost).VirtualMachinePath }
 
-$vmRoot   = Join-Path $basePath $hostname
-$vhdPath  = Join-Path $vmRoot  "$hostname.vhdx"
+#  ➜  Laufwerk validieren
+if (-not (Test-Path (Split-Path $basePath -Qualifier))) {
+    Write-Warning "Laufwerk '$basePath' existiert nicht – fallback zu %ProgramData%\Hyper-V"
+    $basePath = Join-Path $env:ProgramData 'Hyper-V'
+}
+
+$vmRoot     = Join-Path $basePath $hostname
+$vhdPath    = Join-Path $vmRoot  "$hostname.vhdx"
 $installIso = $isoIndex.WindowsServer2025.$($roleInfo.lang)
-$unattIso   = Join-Path $vmRoot  'Unattend.iso'
+$unattIso   = Join-Path $vmRoot 'Unattend.iso'
 
 if (-not (Test-Path $installIso)) { throw "Installations-ISO '$installIso' nicht gefunden." }
 New-Item $vmRoot -ItemType Directory -Force | Out-Null
 
-#──────────────────────────── Unattended-ISO erzeugen ─────────────────────────────────
+#──────────────── Unattended-ISO bauen ─────────────────────────
 $template = Get-Content "$PSScriptRoot\..\src\templates\Unattend.xml" -Raw
-@{Lang=$roleInfo.lang; Prefix=$customer.prefix; Hostname=$hostname; AdminPassword='Passw0rd!'} |
-    ForEach-Object { $template = $template -replace "\$\{$_\.Key\}", $_.Value }
+@{ Lang=$roleInfo.lang; Prefix=$customer.prefix; Hostname=$hostname; AdminPassword='Passw0rd!' } |
+    ForEach-Object {
+        $template = $template -replace "\$\{$_.Key\}", $_.Value   # ← **Backslash entfernt**
+    }
 
-function New-MinIso {
-    param([string]$Xml, [string]$IsoPath)
+function New-MinIso ([string]$Xml,[string]$Iso) {
     $tmp = Join-Path $env:TEMP "unatt_$(New-Guid)"
     New-Item $tmp -ItemType Directory | Out-Null
     $Xml | Set-Content "$tmp\Autounattend.xml" -Encoding UTF8
     $oscd = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits" -Filter oscdimg.exe -Recurse |
             Select-Object -First 1 -ExpandProperty FullName
-    if (-not $oscd) { throw "oscdimg.exe (Windows ADK) fehlt." }
-    & $oscd -o -u2 -udfver102 $tmp $IsoPath | Out-Null
+    if (-not $oscd) { throw "oscdimg.exe (ADK) fehlt." }
+    & $oscd -o -u2 -udfver102 $tmp $Iso | Out-Null
     Remove-Item $tmp -Recurse -Force
 }
-New-MinIso -Xml $template -IsoPath $unattIso
+New-MinIso -Xml $template -Iso $unattIso
 
-#──────────────────────────── VM anlegen ──────────────────────────────────────────────
+#──────────────── VM anlegen ───────────────────────────────────
 if ($PSCmdlet.ShouldProcess($hostname,'Create Hyper-V VM')) {
 
-    # vSwitch bestimmen
     $vmSwitch = if     ($customer.switch) { $customer.switch }
                 elseif ($profile.switch)  { $profile.switch  }
                 else                      { 'S2DSwitch' }
@@ -84,18 +82,20 @@ if ($PSCmdlet.ShouldProcess($hostname,'Create Hyper-V VM')) {
            -Path            $vmRoot `
            -NewVHDPath      $vhdPath `
            -NewVHDSizeBytes ($profile.disks[0].sizeGB * 1GB) `
-           -SwitchName      $vmSwitch |
-           Out-Null
+           -SwitchName      $vmSwitch | Out-Null
 
     # CPU & Nested
     Set-VMProcessor -VMName $hostname -Count $profile.cpu `
         -ExposeVirtualizationExtensions ($profile.nested)
 
-    # RAM-Modus
+    # RAM-Konfiguration
     if ($profile.dynamicMemory) {
         Set-VMMemory -VMName $hostname -DynamicMemoryEnabled $true `
             -MinimumBytes ($profile.memoryMinMB * 1MB) `
             -MaximumBytes ($profile.memoryMaxMB * 1MB)
+    } else {
+        Set-VMMemory -VMName $hostname -DynamicMemoryEnabled $false `
+            -StartupBytes ($profile.memoryMB * 1MB)               # ← **StartupBytes gesetzt**
     }
 
     # SecureBoot + TPM
@@ -105,32 +105,19 @@ if ($PSCmdlet.ShouldProcess($hostname,'Create Hyper-V VM')) {
         Enable-VMTPM       -VMName $hostname
     }
 
-    # ---------- DVD-Drives robust einbinden ----------
+    # ---------- DVD-Drives ---------- (Ctl0/Loc0 & Ctl1/Loc0)
     function Set-OrAddDvd {
-        param(
-            [string] $VM,
-            [int]    $CtlNum,
-            [int]    $Loc,
-            [string] $Iso
-        )
-        $dvd = Get-VMDvdDrive -VMName $VM -ControllerNumber $CtlNum -ControllerLocation $Loc `
-                            -ErrorAction SilentlyContinue
-        if ($dvd) {
-            Set-VMDvdDrive -VMName $VM -ControllerNumber $CtlNum -ControllerLocation $Loc -Path $Iso
-        } else {
-            Add-VMDvdDrive -VMName $VM -ControllerNumber $CtlNum -ControllerLocation $Loc -Path $Iso
-        }
+        param($VM,$Ctl,$Loc,$Iso)
+        $dvd = Get-VMDvdDrive -VMName $VM -ControllerNumber $Ctl -ControllerLocation $Loc -ErrorAction SilentlyContinue
+        if ($dvd) { Set-VMDvdDrive -VMName $VM -ControllerNumber $Ctl -ControllerLocation $Loc -Path $Iso }
+        else      { Add-VMDvdDrive -VMName $VM -ControllerNumber $Ctl -ControllerLocation $Loc -Path $Iso }
     }
+    Set-OrAddDvd $hostname 0 0 $installIso
+    Set-OrAddDvd $hostname 1 0 $unattIso
 
-    # Install-ISO auf vorhandenes Laufwerk (Ctl 0 / Loc 0)
-    Set-OrAddDvd -VM $hostname -CtlNum 0 -Loc 0 -Iso $installIso
-
-    # Unattend-ISO als zweites Laufwerk (Ctl 1 / Loc 0)
-    Set-OrAddDvd -VM $hostname -CtlNum 1 -Loc 0 -Iso $unattIso
-
-    # Booten immer von DVD 0
     $dvdBoot = Get-VMDvdDrive -VMName $hostname -ControllerNumber 0 -ControllerLocation 0
-    Set-VMFirmware -VMName $hostname -FirstBootDevice $dvdBoot
+    Set-VMFirmware -VMName $hostname -FirstBootDevice $dvdBoot `
+                   -BootOrder $dvdBoot                         # ← **Network fliegt ganz hinten**
 
     # VLAN (optional)
     if ($customer.vlanEnable) {
@@ -141,8 +128,8 @@ if ($PSCmdlet.ShouldProcess($hostname,'Create Hyper-V VM')) {
     foreach ($svc in $profile.integrationServices.GetEnumerator()) {
         $is = Get-VMIntegrationService -VMName $hostname -Name $svc.Key
         if ($is) {
-            if     ($svc.Value -and -not $is.Enabled) { Enable-VMIntegrationService $is }
-            elseif (-not $svc.Value -and  $is.Enabled) { Disable-VMIntegrationService $is }
+            if ($svc.Value -and -not $is.Enabled) { Enable-VMIntegrationService $is }
+            elseif (-not $svc.Value -and $is.Enabled) { Disable-VMIntegrationService $is }
         }
     }
 
@@ -152,7 +139,6 @@ if ($PSCmdlet.ShouldProcess($hostname,'Create Hyper-V VM')) {
         -AutomaticStartDelay  $profile.autoStartDelay `
         -AutomaticStopAction  $profile.autoStopAction
 
-    # VM starten
     Start-VM -Name $hostname
     Write-Host "VM '$hostname' wurde erstellt und gestartet." -ForegroundColor Green
 }
