@@ -13,6 +13,20 @@ param(
     [Parameter(Mandatory)][ValidateSet('DC','RDS')][string] $Role
 )
 
+# ---------------------------------------------------------
+# Resolve -CustomerYaml to an absolute path
+# ---------------------------------------------------------
+if (-not (Test-Path $CustomerYaml)) {
+    # 1) versuchen: src\data\customers\<Dateiname>
+    $candidate = Join-Path $PSScriptRoot "..\src\data\customers\$CustomerYaml"
+    if (Test-Path $candidate) {
+        $CustomerYaml = (Resolve-Path $candidate).Path
+    }
+    else {
+        throw "Kundendatei '$CustomerYaml' nicht gefunden. Erwartet wird ein Pfad oder Dateiname unter src\data\customers."
+    }
+}
+
 # --- Schutz gegen versehentliches Template -------------------------------
 if ($CustomerYaml -like '*template.yml') {
     throw "Bitte kopiere 'template.yml' zuerst in eine kunden­eigene Datei und passe die Werte an."

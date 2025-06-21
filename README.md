@@ -10,5 +10,5 @@ Installieren und Grund­konfigurieren von Hyper-V-VMs.
   (vermeidet Konflikt mit integrierter Pester 3.4)
 
 ## Quick Start
-1. Kopiere `data/customers/template.yml` ➜ `OBS.yml`, passe Werte an
-2. `pwsh scripts/Apply-Lab.ps1 -CustomerYaml data/customers/OBS.yml -Role DC`
+1. Kopiere `data/customers/template.yml` ➜ `customer.yml`, passe Werte an
+2. pwsh scripts\Apply-Lab.ps1 ` -CustomerYaml customer.yml -Role DC -Verbose
