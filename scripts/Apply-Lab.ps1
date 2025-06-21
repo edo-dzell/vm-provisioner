@@ -105,19 +105,19 @@ if ($PSCmdlet.ShouldProcess($hostname,'Create Hyper-V VM')) {
         Enable-VMTPM       -VMName $hostname
     }
 
-+    # ---------- DVD-Drives robust einbinden ----------
-+    function Add-OrSet-DvdDrive { param($VM,$Location,$Iso)
-+        $dvd = Get-VMDvdDrive -VMName $VM -ControllerLocation $Location -ErrorAction SilentlyContinue
-+        if ($dvd) { Set-VMDvdDrive -VMName $VM -ControllerLocation $Location -Path $Iso }
-+        else      { Add-VMDvdDrive -VMName $VM -ControllerLocation $Location -Path $Iso }
-+    }
-+
-+    Add-OrSet-DvdDrive $hostname 0 $installIso   # Install-ISO
-+    Add-OrSet-DvdDrive $hostname 1 $unattIso     # Unattend-ISO
-+
-+    # Booten immer von DVD 0
-+    $dvd0 = Get-VMDvdDrive -VMName $hostname -ControllerLocation 0
-+    Set-VMFirmware -VMName $hostname -FirstBootDevice $dvd0
+    # ---------- DVD-Drives robust einbinden ----------
+    function Add-OrSet-DvdDrive { param($VM,$Location,$Iso)
+        $dvd = Get-VMDvdDrive -VMName $VM -ControllerLocation $Location -ErrorAction SilentlyContinue
+        if ($dvd) { Set-VMDvdDrive -VMName $VM -ControllerLocation $Location -Path $Iso }
+        else      { Add-VMDvdDrive -VMName $VM -ControllerLocation $Location -Path $Iso }
+    }
+
+    Add-OrSet-DvdDrive $hostname 0 $installIso   # Install-ISO
+    Add-OrSet-DvdDrive $hostname 1 $unattIso     # Unattend-ISO
+
+    # Booten immer von DVD 0
+    $dvd0 = Get-VMDvdDrive -VMName $hostname -ControllerLocation 0
+    Set-VMFirmware -VMName $hostname -FirstBootDevice $dvd0
 
     # VLAN (optional)
     if ($customer.vlanEnable) {
