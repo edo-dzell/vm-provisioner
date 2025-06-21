@@ -105,19 +105,20 @@ if ($PSCmdlet.ShouldProcess($hostname,'Create Hyper-V VM')) {
         Enable-VMTPM       -VMName $hostname
     }
 
-    # ---------- DVD-Drives ---------- (Ctl0/Loc0 & Ctl1/Loc0)
-    function Set-OrAddDvd {
-        param($VM,$Ctl,$Loc,$Iso)
-        $dvd = Get-VMDvdDrive -VMName $VM -ControllerNumber $Ctl -ControllerLocation $Loc -ErrorAction SilentlyContinue
-        if ($dvd) { Set-VMDvdDrive -VMName $VM -ControllerNumber $Ctl -ControllerLocation $Loc -Path $Iso }
-        else      { Add-VMDvdDrive -VMName $VM -ControllerNumber $Ctl -ControllerLocation $Loc -Path $Iso }
+    # ---------- DVD-Laufwerke sicher einrichten ----------
+    # 1) Erstes (oder neues) DVD-Laufwerk für Install-ISO
+    $dvd0 = Get-VMDvdDrive -VMName $hostname -ErrorAction SilentlyContinue
+    if ($dvd0) {
+        Set-VMDvdDrive -VMName $hostname -Path $installIso
+    } else {
+        $dvd0 = Add-VMDvdDrive -VMName $hostname -Path $installIso
     }
-    Set-OrAddDvd $hostname 0 0 $installIso
-    Set-OrAddDvd $hostname 1 0 $unattIso
 
-    $dvdBoot = Get-VMDvdDrive -VMName $hostname -ControllerNumber 0 -ControllerLocation 0
-    Set-VMFirmware -VMName $hostname -FirstBootDevice $dvdBoot `
-                   -BootOrder $dvdBoot                         # ← **Network fliegt ganz hinten**
+    # 2) Zweites DVD-Laufwerk für Unattend-ISO
+    Add-VMDvdDrive -VMName $hostname -Path $unattIso | Out-Null
+
+    # 3) Boot-Reihenfolge – nur FirstBootDevice setzen
+    Set-VMFirmware -VMName $hostname -FirstBootDevice $dvd0
 
     # VLAN (optional)
     if ($customer.vlanEnable) {
