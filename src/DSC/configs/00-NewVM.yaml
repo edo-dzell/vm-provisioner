@@ -1,0 +1,39 @@
+$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
+metadata:
+  name: New-VM
+resources:
+  - name: Ensure switch exists
+    type: PSDesiredStateConfiguration/WindowsFeature  # Workaround, xVMSwitch im Adapter-Bereich
+    properties:
+      Name: Hyper-V
+      Ensure: Present
+
+  - name: CreateVM
+    type: xHyper-V/VM
+    properties:
+      Name:          '${Hostname}'
+      Generation:    2
+      SwitchName:    'S2DSwitch'
+      MemoryStartupBytes: '${MemoryBytes}'
+      ProcessorCount:     ${CPU}
+      SecureBoot:    On
+      TPMEnabled:    true
+
+  - name: SystemDisk
+    type: xHyper-V/HardDiskDrive
+    properties:
+      VMName:     '${Hostname}'
+      Path:       '${VhdPath}'
+      SizeBytes:  ${DiskBytes}
+
+  - name: DvdIso
+    type: xHyper-V/DVDDrive
+    properties:
+      VMName:     '${Hostname}'
+      Path:       '${IsoPath}'
+
+  - name: FloppyUnattend
+    type: xHyper-V/FloppyDrive
+    properties:
+      VMName:     '${Hostname}'
+      Path:       '${FloppyPath}'

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+  <settings pass="windowsPE">
+    <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <SetupUILanguage>
+        <UILanguage>${Lang}</UILanguage>
+      </SetupUILanguage>
+      <InputLocale>${Lang}</InputLocale>
+      <SystemLocale>${Lang}</SystemLocale>
+      <UILanguage>${Lang}</UILanguage>
+      <UserLocale>${Lang}</UserLocale>
+    </component>
+    <component name="Microsoft-Windows-Setup" ...>
+      <DiskConfiguration>
+        <Disk wcm:action="add">
+          <CreatePartitions>
+            <CreatePartition wcm:action="add">
+              <Order>1</Order>
+              <Type>Primary</Type>
+              <Size>100000</Size>
+            </CreatePartition>
+          </CreatePartitions>
+          <ModifyPartitions>
+            <ModifyPartition wcm:action="add">
+              <Active>true</Active>
+              <Format>NTFS</Format>
+              <Letter>C</Letter>
+              <Order>1</Order>
+              <PartitionID>1</PartitionID>
+            </ModifyPartition>
+          </ModifyPartitions>
+          <DiskID>0</DiskID>
+          <WillWipeDisk>true</WillWipeDisk>
+        </Disk>
+      </DiskConfiguration>
+      <ImageInstall>
+        <OSImage>
+          <InstallFrom>
+            <MetaData wcm:action="add">
+              <Key>/IMAGE/INDEX</Key>
+              <Value>1</Value>
+            </MetaData>
+          </InstallFrom>
+          <InstallTo>
+            <DiskID>0</DiskID>
+            <PartitionID>1</PartitionID>
+          </InstallTo>
+          <WillShowUI>OnError</WillShowUI>
+        </OSImage>
+      </ImageInstall>
+      <UserData>
+        <ProductKey>
+          <Key /> <!-- KMS, also leer -->
+          <WillShowUI>Never</WillShowUI>
+        </ProductKey>
+        <AcceptEula>true</AcceptEula>
+        <FullName>${Prefix} Admin</FullName>
+        <Organization>${Prefix}</Organization>
+      </UserData>
+    </component>
+  </settings>
+
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-International-Core" ...>
+      <InputLocale>${Lang}</InputLocale>
+      <SystemLocale>${Lang}</SystemLocale>
+      <UILanguage>${Lang}</UILanguage>
+      <UserLocale>${Lang}</UserLocale>
+    </component>
+    <component name="Microsoft-Windows-Shell-Setup" ...>
+      <RegisteredOwner>${Prefix} Admin</RegisteredOwner>
+      <RegisteredOrganization>${Prefix}</RegisteredOrganization>
+      <TimeZone>W. Europe Standard Time</TimeZone>
+      <ComputerName>${Hostname}</ComputerName>
+      <AutoLogon>
+        <Password>
+          <Value>${AdminPassword}</Value>
+          <PlainText>true</PlainText>
+        </Password>
+        <Enabled>true</Enabled>
+        <Username>Administrator</Username>
+      </AutoLogon>
+    </component>
+  </settings>
+</unattend>

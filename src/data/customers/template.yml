@@ -1,0 +1,17 @@
+prefix:       ???         # z. B. OBS
+vlanId:       ???         # z. B. 120
+roles:
+  DC:
+    number:   001
+    lang:     en-US
+    ip:
+      address: 192.168.?.?
+      mask:    255.255.255.0
+      gateway: 192.168.?.1
+  RDS:
+    number:   001
+    lang:     de-DE
+    ip:
+      address: 192.168.?.?
+      mask:    255.255.255.0
+      gateway: 192.168.?.1

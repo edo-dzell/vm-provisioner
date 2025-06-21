@@ -1,0 +1,10 @@
+DomainController:
+  cpu: 4
+  memoryMB: 8192
+  disks:
+    - sizeGB: 100     # System
+RdsSessionHost:
+  cpu: 8
+  memoryMB: 16384
+  disks:
+    - sizeGB: 100
