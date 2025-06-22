@@ -29,7 +29,9 @@ $profile    = $profiles.$profileKey
 $roleInfo   = $customer.roles.$Role
 
 # ─────────── Hostname & Pfade ─────────────────────────────────────────────
-$hostname = ('{0}{1:D3}{2}' -f $customer.prefix, $roleInfo.number, $Role).Substring(0,15)
+$hostname = '{0}{1:D3}{2}' -f $customer.prefix, $roleInfo.number, $Role
+if ($hostname.Length -gt 15) { $hostname = $hostname.Substring(0,15) }
+
 
 $basePath = $customer.basePath ?? $profile.basePath ?? (Get-VMHost).VirtualMachinePath
 if (-not (Test-Path (Split-Path $basePath -Qualifier))) {
@@ -114,13 +116,28 @@ if ($PSCmdlet.ShouldProcess($hostname,'Create Hyper-V VM')) {
         Enable-VMTPM -VMName $hostname
     }
 
-    # DVD-0 = Mini-ISO  |  DVD-1 = Install-ISO
-    $dvd0 = Get-VMDvdDrive -VMName $hostname -ErrorAction SilentlyContinue
-    if ($dvd0) { Set-VMDvdDrive -VMName $hostname -Path $miniIso }
-    else       { $dvd0 = Add-VMDvdDrive -VMName $hostname -Path $miniIso }
+    # ----- DVD-Laufwerke robust konfigurieren -----
+    # Ziel: 1. Mini-ISO  2. Install-ISO
 
-    Add-VMDvdDrive -VMName $hostname -Path $installIso | Out-Null
-    Set-VMFirmware -VMName $hostname -FirstBootDevice $dvd0
+    # Mini-ISO auf *erstes* DVD-Laufwerk legen – existierend oder neu
+    $dvdMini = Get-VMDvdDrive -VMName $hostname | Select-Object -First 1
+
+    if ($dvdMini) {
+        # vorhandenes Laufwerk nutzen
+        Set-VMDvdDrive -VMName $hostname `
+            -ControllerNumber  $dvdMini.ControllerNumber `
+            -ControllerLocation $dvdMini.ControllerLocation `
+            -Path $miniIso
+    } else {
+        # es gibt noch kein DVD-Drive → eines anlegen
+        $dvdMini = Add-VMDvdDrive -VMName $hostname -Path $miniIso
+    }
+
+    # Install-ISO als weiteres Laufwerk hinzufügen (Hyper-V wählt freien Slot)
+    $dvdInst = Add-VMDvdDrive -VMName $hostname -Path $installIso
+
+    # Booten zuerst von Mini-ISO
+    Set-VMFirmware -VMName $hostname -FirstBootDevice $dvdMini
 
     if ($customer.vlanEnable) {
         Set-VMNetworkAdapterVlan -VMName $hostname -Access -VlanId $customer.vlanId

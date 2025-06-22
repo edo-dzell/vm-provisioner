@@ -26,23 +26,13 @@
 
       <!-- Datenträger: alles löschen, 100 GB NTFS-Partition -->
       <DiskConfiguration>
+        <WillShowUI>Never</WillShowUI>
         <Disk wcm:action="add">
           <DiskID>0</DiskID>
           <WillWipeDisk>true</WillWipeDisk>
-          <CreatePartitions>
-            <CreatePartition wcm:action="add">
-              <Order>1</Order><Type>Primary</Type><Size>100000</Size>
-            </CreatePartition>
-          </CreatePartitions>
-          <ModifyPartitions>
-            <ModifyPartition wcm:action="add">
-              <PartitionID>1</PartitionID><Order>1</Order>
-              <Active>true</Active><Format>NTFS</Format><Letter>C</Letter>
-              <Label>OS</Label>
-            </ModifyPartition>
-          </ModifyPartitions>
         </Disk>
       </DiskConfiguration>
+      <InstallToAvailablePartition>true</InstallToAvailablePartition>
 
       <!-- Abbild wählen -->
       <ImageInstall>
