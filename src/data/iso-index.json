@@ -1,6 +1,16 @@
 {
   "WindowsServer2025": {
-    "en-US": "C:\\ISOs\\Windows Server 2025 EN\\WS2025_EN-US.iso",
-    "de-DE": "C:\\ISOs\\Windows Server 2025 DE\\WS2025_DE-DE.iso"
+    "en-US": {
+      "StandardCore"   : { "index": 1, "iso": "C:\\ISOs\\WS2025_EN-US.iso" },
+      "StandardGui"    : { "index": 2, "iso": "C:\\ISOs\\WS2025_EN-US.iso" },
+      "DatacenterCore" : { "index": 3, "iso": "C:\\ISOs\\WS2025_EN-US.iso" },
+      "DatacenterGui"  : { "index": 4, "iso": "C:\\ISOs\\WS2025_EN-US.iso" }
+    },
+    "de-DE": {
+      "StandardCore"   : { "index": 1, "iso": "C:\\ISOs\\WS2025_DE-DE.iso" },
+      "StandardGui"    : { "index": 2, "iso": "C:\\ISOs\\WS2025_DE-DE.iso" },
+      "DatacenterCore" : { "index": 3, "iso": "C:\\ISOs\\WS2025_DE-DE.iso" },
+      "DatacenterGui"  : { "index": 4, "iso": "C:\\ISOs\\WS2025_DE-DE.iso" }
+    }
   }
 }

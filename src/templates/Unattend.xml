@@ -1,58 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<unattend xmlns="urn:schemas-microsoft-com:unattend">
+<unattend xmlns="urn:schemas-microsoft-com:unattend"
+          xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <!-- 1 ───── windowsPE ─────────────────────────────────────────────────── -->
   <settings pass="windowsPE">
-    <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
-      <SetupUILanguage>
-        <UILanguage>${Lang}</UILanguage>
-      </SetupUILanguage>
+
+    <component name="Microsoft-Windows-International-Core-WinPE"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
+      <SetupUILanguage><UILanguage>${Lang}</UILanguage></SetupUILanguage>
       <InputLocale>${Lang}</InputLocale>
       <SystemLocale>${Lang}</SystemLocale>
       <UILanguage>${Lang}</UILanguage>
       <UserLocale>${Lang}</UserLocale>
     </component>
-    <component name="Microsoft-Windows-Setup" ...>
+
+    <component name="Microsoft-Windows-Setup"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
+
+      <!-- Datenträger: alles löschen, 100 GB NTFS-Partition -->
       <DiskConfiguration>
         <Disk wcm:action="add">
+          <DiskID>0</DiskID>
+          <WillWipeDisk>true</WillWipeDisk>
           <CreatePartitions>
             <CreatePartition wcm:action="add">
-              <Order>1</Order>
-              <Type>Primary</Type>
-              <Size>100000</Size>
+              <Order>1</Order><Type>Primary</Type><Size>100000</Size>
             </CreatePartition>
           </CreatePartitions>
           <ModifyPartitions>
             <ModifyPartition wcm:action="add">
-              <Active>true</Active>
-              <Format>NTFS</Format>
-              <Letter>C</Letter>
-              <Order>1</Order>
-              <PartitionID>1</PartitionID>
+              <PartitionID>1</PartitionID><Order>1</Order>
+              <Active>true</Active><Format>NTFS</Format><Letter>C</Letter>
+              <Label>OS</Label>
             </ModifyPartition>
           </ModifyPartitions>
-          <DiskID>0</DiskID>
-          <WillWipeDisk>true</WillWipeDisk>
         </Disk>
       </DiskConfiguration>
+
+      <!-- Abbild wählen -->
       <ImageInstall>
         <OSImage>
           <InstallFrom>
             <MetaData wcm:action="add">
-              <Key>/IMAGE/INDEX</Key>
-              <Value>1</Value>
+              <Key>/IMAGE/INDEX</Key><Value>${ImageIndex}</Value>
             </MetaData>
           </InstallFrom>
-          <InstallTo>
-            <DiskID>0</DiskID>
-            <PartitionID>1</PartitionID>
-          </InstallTo>
+          <InstallTo><DiskID>0</DiskID><PartitionID>1</PartitionID></InstallTo>
           <WillShowUI>OnError</WillShowUI>
         </OSImage>
       </ImageInstall>
+
+      <!-- EULA + org -->
       <UserData>
-        <ProductKey>
-          <Key /> <!-- KMS, also leer -->
-          <WillShowUI>Never</WillShowUI>
-        </ProductKey>
+        <ProductKey><Key></Key><WillShowUI>Never</WillShowUI></ProductKey>
         <AcceptEula>true</AcceptEula>
         <FullName>${Prefix} Admin</FullName>
         <Organization>${Prefix}</Organization>
@@ -60,26 +67,88 @@
     </component>
   </settings>
 
+  <!-- 2 ───── specialize ──────────────────────────────────────────────── -->
+  <settings pass="specialize">
+
+    <component name="Microsoft-Windows-Shell-Setup"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
+      <ComputerName>${Hostname}</ComputerName>
+      <RegisteredOwner>${Prefix} Admin</RegisteredOwner>
+      <RegisteredOrganization>${Prefix}</RegisteredOrganization>
+
+      <AdministratorPassword>
+        <Value>${AdminPassword}</Value><PlainText>true</PlainText>
+      </AdministratorPassword>
+      <PasswordExpiryDisable>true</PasswordExpiryDisable>
+
+      <TelemetryOptInSettings>
+        <OptInChoice>${Diagnostics}</OptInChoice> <!-- Required/Optional/Full -->
+      </TelemetryOptInSettings>
+    </component>
+
+    <!-- optionale statische IP -->
+    <component name="Microsoft-Windows-TCPIP"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
+      <Interfaces>
+        <Interface wcm:action="add">
+          <Identifier>0</Identifier>
+          <Ipv4Settings><DhcpEnabled>false</DhcpEnabled></Ipv4Settings>
+          <UnicastIpAddresses>
+            <IpAddress wcm:action="add" wcm:keyValue="1">${IpAddress}</IpAddress>
+          </UnicastIpAddresses>
+          <Routes>
+            <Route wcm:action="add">
+              <Prefix>0.0.0.0/0</Prefix>
+              <NextHopAddress>${Gateway}</NextHopAddress>
+              <Metric>1</Metric>
+            </Route>
+          </Routes>
+          <DnsServers>
+            <DnsServer wcm:action="add" wcm:keyValue="1">${Dns1}</DnsServer>
+          </DnsServers>
+        </Interface>
+      </Interfaces>
+    </component>
+
+  </settings>
+
+  <!-- 3 ───── oobeSystem ──────────────────────────────────────────────── -->
   <settings pass="oobeSystem">
-    <component name="Microsoft-Windows-International-Core" ...>
+
+    <component name="Microsoft-Windows-International-Core"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
       <InputLocale>${Lang}</InputLocale>
       <SystemLocale>${Lang}</SystemLocale>
       <UILanguage>${Lang}</UILanguage>
       <UserLocale>${Lang}</UserLocale>
     </component>
-    <component name="Microsoft-Windows-Shell-Setup" ...>
+
+    <component name="Microsoft-Windows-Shell-Setup"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
       <RegisteredOwner>${Prefix} Admin</RegisteredOwner>
       <RegisteredOrganization>${Prefix}</RegisteredOrganization>
       <TimeZone>W. Europe Standard Time</TimeZone>
-      <ComputerName>${Hostname}</ComputerName>
+
       <AutoLogon>
-        <Password>
-          <Value>${AdminPassword}</Value>
-          <PlainText>true</PlainText>
-        </Password>
-        <Enabled>true</Enabled>
+        <Enabled>true</Enabled><LogonCount>999</LogonCount>
         <Username>Administrator</Username>
+        <Password>
+          <Value>${AdminPassword}</Value><PlainText>true</PlainText>
+        </Password>
       </AutoLogon>
     </component>
+
   </settings>
 </unattend>

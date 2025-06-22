@@ -8,14 +8,14 @@ DomainController:
   nested:         false
   secureBoot:     true
   tpm:            true
-  switch: S2DSwitch 
+  switch:         S2DSwitch
   integrationServices:
-    Time Synchronization:      false
+    "Time Synchronization":    false
     Heartbeat:                 true
-    Key-Value Pair Exchange:   true
+    "Key-Value Pair Exchange": true
     Shutdown:                  true
     VSS:                       true
-    Guest Service Interface:   true
+    "Guest Service Interface": true
   autoStartAction:  Start
   autoStartDelay:   30
   autoStopAction:   Shutdown
@@ -32,14 +32,14 @@ RdsSessionHost:
   nested:         false
   secureBoot:     true
   tpm:            true
-  switch: S2DSwitch 
+  switch:         S2DSwitch
   integrationServices:
-    Time Synchronization:      false
+    "Time Synchronization":    false
     Heartbeat:                 true
-    Key-Value Pair Exchange:   true
+    "Key-Value Pair Exchange": true
     Shutdown:                  true
     VSS:                       true
-    Guest Service Interface:   true
+    "Guest Service Interface": true
   autoStartAction:  Start
   autoStartDelay:   30
   autoStopAction:   Shutdown

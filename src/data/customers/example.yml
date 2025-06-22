@@ -1,0 +1,41 @@
+# --------------------------------------------------------------------
+#  Kunden-Beispieldatei – als Vorlage kopieren und anpassen
+# --------------------------------------------------------------------
+
+prefix:  CUSTOMER
+
+# Ziel­verzeichnis für die VM-Ordner
+basePath: "V:\\VMs"            # Cluster-CSV: z. B. C:\ClusterStorage\Volume1
+
+# Netz / Hyper-V
+vlanEnable: true
+vlanId:     50
+switch:     External           # vSwitch-Name auf dem Host
+
+# Telemetrie-Einstellung (Required | Optional | Full)
+diagnostics: required
+
+# Standard-Kennwort für Built--in Administrator
+adminPassword: "Passw0rd!123"  # Produktions-Passwort via Secret-Vault einfügen
+
+roles:
+  DC:
+    number:   001
+    lang:     en-US
+    edition:  Datacenter        # Standard | Datacenter
+    gui:      true              # true = Desktop-GUI, false = Core
+    ip:
+      address: 192.168.50.205
+      mask:    255.255.255.0
+      gateway: 192.168.50.254
+      dns:     192.168.50.254   # erstes DNS
+  RDS:
+    number:   001
+    lang:     de-DE
+    edition:  Standard
+    gui:      true
+    ip:
+      address: 192.168.50.215
+      mask:    255.255.255.0
+      gateway: 192.168.50.254
+      dns:     192.168.50.254
